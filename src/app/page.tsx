@@ -47,15 +47,13 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Car grid */}
-        <div className="transition-opacity duration-300">
-          <CarGrid
-            cars={cars}
-            total={total}
-            loading={loading}
-            error={error}
-          />
-        </div>
+        {/* Car grid with smooth content transitions */}
+        <CarGrid
+          cars={cars}
+          total={total}
+          loading={loading}
+          error={error}
+        />
       </div>
 
       {/* Footer */}

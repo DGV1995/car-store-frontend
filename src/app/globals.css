@@ -12,6 +12,19 @@ body {
   background: rgb(var(--background-rgb));
 }
 
+/* Custom utilities */
+@layer utilities {
+  .content-fade-enter {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .content-fade-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
