@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Car, CarFilters } from "@/types/car";
 import { fetchCars } from "@/lib/api";
+import { ApiError } from "@/types/errors";
 
 interface UseCarsResult {
   cars: Car[];
@@ -43,7 +44,29 @@ export function useCars(initialFilters: CarFilters = {}): UseCarsResult {
       }
     } catch (err) {
       if (!controller.signal.aborted) {
-        setError(err instanceof Error ? err.message : "An unexpected error occurred");
+        // Derive a user-friendly message from the ApiError
+        let userMessage: string;
+
+        if (err instanceof ApiError) {
+          if (err.isCorsError) {
+            userMessage =
+              "Unable to connect to the server due to a network or CORS issue. " +
+              "Please check your connection and try again.";
+          } else if (err.status >= 400 && err.status < 500) {
+            userMessage = `Request failed (${err.status}): ${err.message}`;
+          } else if (err.status >= 500) {
+            userMessage =
+              "The server encountered an error. Please try again later.";
+          } else {
+            userMessage = err.message;
+          }
+        } else if (err instanceof Error) {
+          userMessage = err.message;
+        } else {
+          userMessage = "An unexpected error occurred.";
+        }
+
+        setError(userMessage);
         setCars([]);
         setTotal(0);
         setLoading(false);
