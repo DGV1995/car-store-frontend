@@ -3,6 +3,7 @@
 import { useCars } from "@/hooks/useCars";
 import FilterBar from "@/components/FilterBar";
 import CarGrid from "@/components/CarGrid";
+import Link from "next/link";
 
 export default function HomePage() {
   const { cars, total, loading, error, filters, setFilters } = useCars();
@@ -33,6 +34,25 @@ export default function HomePage() {
               <p className="text-sm text-gray-500">Browse our collection</p>
             </div>
           </div>
+          <Link
+            href="/admin"
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-blue-700 active:scale-95"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+              />
+            </svg>
+            Admin
+          </Link>
         </div>
       </header>
 
