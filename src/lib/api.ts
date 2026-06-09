@@ -57,7 +57,7 @@ function parse422FieldErrors(body: unknown): CarFormErrors | null {
     model: "model",
     year: "year",
     price: "price",
-    file: "image",
+    image: "image",
   };
 
   const errors: CarFormErrors = {};
@@ -122,6 +122,9 @@ export async function fetchCars(filters?: CarFilterParams): Promise<Car[]> {
  * Constructs a FormData object from the provided file, brand, model, year,
  * and price, then sends it to the backend. Returns the created Car on success.
  *
+ * The image file is appended under the field name **'image'** to match the
+ * backend API contract (UploadFile field).
+ *
  * Throws an ApiValidationError when the backend responds with 422, carrying
  * field-level error messages parsed from the FastAPI validation response.
  */
@@ -135,7 +138,7 @@ export async function createCar(
   const formData = new FormData();
 
   if (image) {
-    formData.append("file", image);
+    formData.append("image", image);
   }
 
   formData.append("brand", brand);
