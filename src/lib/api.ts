@@ -1,4 +1,4 @@
-import type { Car, CarFilterParams } from "@/types";
+import type { Car, CarFilterParams, CarFormErrors } from "@/types";
 
 /**
  * Build the base URL for the cars API endpoint.
@@ -21,6 +21,71 @@ function getCarsBaseUrl(): string {
 
   const trimmed = apiBaseUrl.endsWith("/") ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
   return `${trimmed}/cars`;
+}
+
+/**
+ * Custom error that carries both a human-readable message and an optional map
+ * of field-level validation errors parsed from a 422 response.
+ */
+export class ApiValidationError extends Error {
+  public readonly fieldErrors: CarFormErrors | null;
+
+  constructor(message: string, fieldErrors: CarFormErrors | null = null) {
+    super(message);
+    this.name = "ApiValidationError";
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+/**
+ * Attempt to parse a FastAPI 422 validation error response body into
+ * field-level error messages. Returns a partial CarFormErrors object
+ * (only fields that were recognised) or null if the payload can't be parsed.
+ */
+function parse422FieldErrors(body: unknown): CarFormErrors | null {
+  if (typeof body !== "object" || body === null) {
+    return null;
+  }
+
+  const detail = (body as Record<string, unknown>).detail;
+  if (!Array.isArray(detail)) {
+    return null;
+  }
+
+  const FIELD_MAP: Record<string, keyof CarFormErrors> = {
+    brand: "brand",
+    model: "model",
+    year: "year",
+    price: "price",
+    file: "image",
+  };
+
+  const errors: CarFormErrors = {};
+
+  for (const item of detail) {
+    if (
+      typeof item !== "object" ||
+      item === null ||
+      typeof (item as Record<string, unknown>).msg !== "string"
+    ) {
+      continue;
+    }
+    const err = item as { loc?: Array<string | number>; msg: string; type?: string };
+    // loc typically looks like ["body", "brand"]
+    const fieldName = Array.isArray(err.loc) && err.loc.length >= 2
+      ? String(err.loc[err.loc.length - 1])
+      : null;
+
+    if (fieldName && FIELD_MAP[fieldName]) {
+      const target = FIELD_MAP[fieldName];
+      // Only set the first error per field.
+      if (!errors[target]) {
+        errors[target] = err.msg.charAt(0).toUpperCase() + err.msg.slice(1);
+      }
+    }
+  }
+
+  return Object.keys(errors).length > 0 ? errors : null;
 }
 
 /**
@@ -55,7 +120,10 @@ export async function fetchCars(filters?: CarFilterParams): Promise<Car[]> {
  * Create a new car via multipart/form-data POST request.
  *
  * Constructs a FormData object from the provided file, brand, model, year,
- * and price, then sends it to the backend.  Returns the created Car on success.
+ * and price, then sends it to the backend. Returns the created Car on success.
+ *
+ * Throws an ApiValidationError when the backend responds with 422, carrying
+ * field-level error messages parsed from the FastAPI validation response.
  */
 export async function createCar(
   image: File | null,
@@ -81,21 +149,35 @@ export async function createCar(
   });
 
   if (!res.ok) {
-    let errorMessage = `Failed to create car: ${res.status} ${res.statusText}`;
+    let fieldErrors: CarFormErrors | null = null;
+
     try {
       const body = await res.json();
+
+      // Attempt to parse 422 field-level errors from FastAPI.
+      if (res.status === 422) {
+        fieldErrors = parse422FieldErrors(body);
+      }
+
+      // Build a human-readable message.
+      let errorMessage = `Failed to create car: ${res.status} ${res.statusText}`;
+
       if (body.detail) {
-        // FastAPI validation error shape
         errorMessage = typeof body.detail === "string"
           ? body.detail
           : body.detail.map((d: { msg: string }) => d.msg).join("; ");
       } else if (body.message) {
         errorMessage = body.message;
       }
-    } catch {
-      // Use the default error message
+
+      throw new ApiValidationError(errorMessage, fieldErrors);
+    } catch (err) {
+      if (err instanceof ApiValidationError) {
+        throw err;
+      }
+      // JSON parsing failed, throw a generic error.
+      throw new Error(`Failed to create car: ${res.status} ${res.statusText}`);
     }
-    throw new Error(errorMessage);
   }
 
   return res.json();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { createCar } from "@/lib/api";
+import { createCar, ApiValidationError } from "@/lib/api";
 import type { CarFormErrors } from "@/types";
 
 /** Maximum year allowed (current year + 1). */
@@ -23,8 +23,10 @@ function validateForm(
 ): CarFormErrors {
   const errors: CarFormErrors = {};
 
-  // Image is optional — no error if missing, but if provided must be valid type.
-  if (image && !ALLOWED_IMAGE_TYPES.includes(image.type)) {
+  // Image is required.
+  if (!image) {
+    errors.image = "An image is required.";
+  } else if (!ALLOWED_IMAGE_TYPES.includes(image.type)) {
     errors.image = "Only JPG, PNG, and GIF images are accepted.";
   }
 
@@ -139,9 +141,18 @@ export default function AdminPage() {
           setSuccessMessage(null);
         }, 3000);
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "An unexpected error occurred.";
-        setServerError(message);
+        if (err instanceof ApiValidationError) {
+          // If the API returned structured field-level errors, display them inline.
+          if (err.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
+            setErrors(err.fieldErrors);
+          } else {
+            setServerError(err.message);
+          }
+        } else if (err instanceof Error) {
+          setServerError(err.message);
+        } else {
+          setServerError("An unexpected error occurred.");
+        }
       } finally {
         setLoading(false);
       }
@@ -219,7 +230,7 @@ export default function AdminPage() {
           {/* Image upload */}
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Car Image
+              Car Image <span className="text-red-500">*</span>
             </label>
             {imagePreview ? (
               <div className="relative inline-block">
@@ -256,7 +267,7 @@ export default function AdminPage() {
                   Click to upload an image
                 </span>
                 <span className="mt-1 text-xs text-zinc-400">
-                  {ALLOWED_EXTENSIONS} (optional)
+                  {ALLOWED_EXTENSIONS}
                 </span>
                 <input
                   ref={fileInputRef}
