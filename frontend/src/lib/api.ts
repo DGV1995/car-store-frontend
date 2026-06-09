@@ -1,6 +1,27 @@
 import type { Car, CarFilterParams } from "@/types";
 
-const BASE_URL = "/api/cars";
+/**
+ * Build the base URL for the cars API endpoint.
+ *
+ * Behaviour:
+ * - If `NEXT_PUBLIC_API_BASE_URL` is undefined → default to `"/api/cars"`.
+ * - If it is an empty string → return `"/cars"`.
+ * - Otherwise append `/cars` to the configured base (trailing slashes are trimmed).
+ */
+function getCarsBaseUrl(): string {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (apiBaseUrl === undefined) {
+    return "/api/cars";
+  }
+
+  if (apiBaseUrl === "") {
+    return "/cars";
+  }
+
+  const trimmed = apiBaseUrl.endsWith("/") ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
+  return `${trimmed}/cars`;
+}
 
 /**
  * Fetch cars from the backend, optionally filtered.
@@ -17,8 +38,9 @@ export async function fetchCars(filters?: CarFilterParams): Promise<Car[]> {
     if (filters.price_max !== undefined) params.set("price_max", String(filters.price_max));
   }
 
+  const baseUrl = getCarsBaseUrl();
   const qs = params.toString();
-  const url = qs ? `${BASE_URL}?${qs}` : BASE_URL;
+  const url = qs ? `${baseUrl}?${qs}` : baseUrl;
 
   const res = await fetch(url);
 
@@ -53,7 +75,7 @@ export async function createCar(
   formData.append("year", String(year));
   formData.append("price", String(price));
 
-  const res = await fetch(BASE_URL, {
+  const res = await fetch(getCarsBaseUrl(), {
     method: "POST",
     body: formData,
   });
