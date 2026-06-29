@@ -1,19 +1,23 @@
 /**
  * src/redux/api/baseApi.ts — RTK Query base API configuration.
  *
- * The base URL is sourced from the VITE_API_BASE_URL environment variable
- * with a sensible fallback default.
+ * The base URL points to the FastAPI backend root (http://localhost:8000)
+ * so that every endpoint path (e.g. /api/cars, /health) is correctly
+ * prefixed.
  */
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
+/**
+ * Centrally defined API base URL.
+ *
+ * Priority:
+ *  1. NEXT_PUBLIC_API_BASE_URL environment variable (Next.js convention)
+ *  2. Hard-coded fallback http://localhost:8000
+ */
 const API_BASE_URL: string =
-  (typeof import.meta !== 'undefined' &&
-    (import.meta as Record<string, unknown>).env &&
-    ((import.meta as Record<string, Record<string, string>>).env
-      .VITE_API_BASE_URL as string | undefined)) ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8000/api';
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, '') ??
+  'http://localhost:8000';
 
 /**
  * Base RTK Query API slice.
