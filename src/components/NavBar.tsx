@@ -11,6 +11,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Store', href: '/' },
   { label: 'Admin', href: '/admin' },
+  { label: 'Chat', href: '/chat' },
 ];
 
 export default function NavBar() {
