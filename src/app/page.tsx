@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Car } from '@/types';
+import { apiUrl } from '@/lib/api';
 
 type PageState = 'loading' | 'error' | 'empty' | 'success';
 
@@ -16,7 +17,7 @@ export default function HomePage() {
       setErrorMessage('');
 
       try {
-        const response = await fetch('/api/cars');
+        const response = await fetch(apiUrl('/api/cars'));
 
         if (!response.ok) {
           throw new Error(`Failed to fetch cars (status ${response.status})`);
@@ -94,13 +95,26 @@ function CarCard({ car }: { car: Car }) {
 
   const formattedKm = new Intl.NumberFormat('de-DE').format(car.km);
 
+  /**
+   * Resolve image URL:
+   * - If the backend returns a relative path like "/uploads/foo.jpg", prefix
+   *   it with the API base URL so the browser fetches it from the backend.
+   * - Absolute URLs (http://… or https://…) are used as-is.
+   */
+  const resolvedImageUrl =
+    car.image_url &&
+    !car.image_url.startsWith('http://') &&
+    !car.image_url.startsWith('https://')
+      ? apiUrl(car.image_url)
+      : car.image_url;
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-200 flex flex-col">
       {/* Image */}
       <div className="relative w-full h-48 bg-gray-200">
-        {car.image_url ? (
+        {resolvedImageUrl ? (
           <img
-            src={car.image_url}
+            src={resolvedImageUrl}
             alt={`${car.brand} ${car.model}`}
             className="w-full h-full object-cover"
             loading="lazy"
