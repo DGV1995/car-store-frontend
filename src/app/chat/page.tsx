@@ -32,6 +32,18 @@ export default function ChatPage() {
   const [streamingContent, setStreamingContent] = useState<string>('');
   const [sendError, setSendError] = useState<string | null>(null);
 
+  /**
+   * When true the ChatArea skips its decorative empty state and renders the
+   * input field so the user can immediately type after clicking "New Chat".
+   */
+  const [forceShowInput, setForceShowInput] = useState<boolean>(false);
+
+  /**
+   * Incremented every time "New Chat" is clicked so ChatArea can
+   * programmatically focus the message input field.
+   */
+  const [focusKey, setFocusKey] = useState<number>(0);
+
   // AbortController ref for cancelling an in-flight streaming request
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -99,14 +111,21 @@ export default function ChatPage() {
   const handleNewChat = useCallback(() => {
     // Abort any in-flight streaming request
     abortControllerRef.current?.abort();
+
+    // Reset all chat-related state to a clean slate
     setIsStreaming(false);
     setStreamingContent('');
-
     setSelectedConversationId(null);
     setMessages([]);
     setHistoryLoading(false);
     setSendError(null);
     setInputValue('');
+
+    // Show the input field even though there are no messages yet
+    setForceShowInput(true);
+
+    // Trigger a focus on the message input via ChatArea's focusKey prop
+    setFocusKey((prev) => prev + 1);
   }, []);
 
   /* ─────── Select conversation ─────── */
@@ -118,6 +137,11 @@ export default function ChatPage() {
       setIsStreaming(false);
       setStreamingContent('');
       setSendError(null);
+
+      // When loading an existing conversation we don't need to force the
+      // input — if the conversation has messages they'll be displayed; if
+      // it's somehow empty we still show the input as a fallback.
+      setForceShowInput(false);
 
       loadConversation(id);
     },
@@ -272,6 +296,8 @@ export default function ChatPage() {
         onInputChange={setInputValue}
         onSend={handleSend}
         error={sendError}
+        forceShowInput={forceShowInput}
+        focusKey={focusKey}
       />
 
       {/* Full-page error overlay if sidebar failed to load */}
