@@ -20,6 +20,18 @@ export interface ChatAreaProps {
   onSend: () => void;
   /** Error message to display, if any. */
   error: string | null;
+  /**
+   * When true, the decorative "Start a conversation" empty state is skipped
+   * and the input field is rendered instead, so the user can immediately
+   * start typing after clicking "New Chat".
+   */
+  forceShowInput?: boolean;
+  /**
+   * Incrementing this value triggers a programmatic focus on the message
+   * input. Useful after "New Chat" resets the UI so the user can type
+   * without manually clicking into the field.
+   */
+  focusKey?: number;
 }
 
 /**
@@ -38,6 +50,8 @@ export default function ChatArea({
   onInputChange,
   onSend,
   error,
+  forceShowInput = false,
+  focusKey = 0,
 }: ChatAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -53,6 +67,18 @@ export default function ChatArea({
       inputRef.current?.focus();
     }
   }, [isStreaming]);
+
+  // Focus the input when focusKey changes (e.g. after "New Chat" is clicked)
+  useEffect(() => {
+    if (focusKey > 0 && !isStreaming) {
+      // Small delay to ensure the DOM has updated (the input may have
+      // been freshly mounted after switching away from the empty state).
+      const raf = requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [focusKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = () => {
     if (inputValue.trim() === '' || isStreaming) return;
@@ -74,7 +100,13 @@ export default function ChatArea({
 
   /* ─────── Empty state ─────── */
 
-  if (!isLoadingHistory && messages.length === 0 && !isStreaming && !error) {
+  if (
+    !isLoadingHistory &&
+    messages.length === 0 &&
+    !isStreaming &&
+    !error &&
+    !forceShowInput
+  ) {
     return (
       <div className="flex-1 flex items-center justify-center bg-white">
         <div className="text-center px-6">
